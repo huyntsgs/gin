@@ -52,6 +52,90 @@ func Logger() HandlerFunc {
 	return LoggerWithWriter(DefaultWriter)
 }
 
+func Logger(userInfo string) HandlerFunc {
+	return LoggerWithWriter(DefaultWriter, userInfo)
+}
+
+
+
+// LoggerWithWriter instance a Logger middleware with the specified writter buffer.
+// Example: os.Stdout, a file opened in write mode, a socket...
+func LoggerWithWriter(out io.Writer, userInfo string, notlogged ...string) HandlerFunc {
+	isTerm := true
+
+	if w, ok := out.(*os.File); !ok ||
+		(os.Getenv("TERM") == "dumb" || (!isatty.IsTerminal(w.Fd()) && !isatty.IsCygwinTerminal(w.Fd()))) ||
+		disableColor {
+		isTerm = false
+	}
+
+	var skip map[string]struct{}
+
+	if length := len(notlogged); length > 0 {
+		skip = make(map[string]struct{}, length)
+
+		for _, path := range notlogged {
+			skip[path] = struct{}{}
+		}
+	}
+
+	return func(c *Context) {
+		// Start timer
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		// Process request
+		c.Next()
+
+		// Log only when path is not being skipped
+		if _, ok := skip[path]; !ok {
+			// Stop timer
+			end := time.Now()
+			latency := end.Sub(start)
+
+			clientIP := c.ClientIP()
+			method := c.Request.Method
+			statusCode := c.Writer.Status()
+			var statusColor, methodColor, resetColor string
+			if isTerm {
+				statusColor = colorForStatus(statusCode)
+				methodColor = colorForMethod(method)
+				resetColor = reset
+			}
+			comment := c.Errors.ByType(ErrorTypePrivate).String()
+
+			if raw != "" {
+				path = path + "?" + raw
+			}
+
+			if c.GetString(userInfo) != nil {
+				fmt.Fprintf(out, "[GIN] %v |%s %3d %s| %s| %13v | %15s |%s %-7s %s %s\n%s",
+				end.Format("2006/01/02 - 15:04:05"),
+				statusColor, statusCode, resetColor,
+				latency,
+				c.GetString(userInfo),
+				clientIP,
+				methodColor, method, resetColor,
+				path,
+				comment,
+				)
+			} else {
+
+				fmt.Fprintf(out, "[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %s\n%s",
+					end.Format("2006/01/02 - 15:04:05"),
+					statusColor, statusCode, resetColor,
+					latency,
+					clientIP,
+					methodColor, method, resetColor,
+					path,
+					comment,
+				)
+			}
+		}
+	}
+}
+
 // LoggerWithWriter instance a Logger middleware with the specified writter buffer.
 // Example: os.Stdout, a file opened in write mode, a socket...
 func LoggerWithWriter(out io.Writer, notlogged ...string) HandlerFunc {
