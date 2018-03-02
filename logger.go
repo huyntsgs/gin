@@ -109,7 +109,7 @@ func LoggerWithWriterInfo(out io.Writer, userInfo string, notlogged ...string) H
 				path = path + "?" + raw
 			}
 
-			if c.GetString(userInfo) != nil {
+			if c.GetString(userInfo) != "" {
 				fmt.Fprintf(out, "[GIN] %v |%s %3d %s| %s| %13v | %15s |%s %-7s %s %s\n%s",
 				end.Format("2006/01/02 - 15:04:05"),
 				statusColor, statusCode, resetColor,
