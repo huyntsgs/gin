@@ -51,15 +51,12 @@ func ErrorLoggerT(typ ErrorType) HandlerFunc {
 func Logger() HandlerFunc {
 	return LoggerWithWriter(DefaultWriter)
 }
-
+//add userInfo such as userID, userName in log for debugging
 func LoggerInfo(userInfo string) HandlerFunc {
 	return LoggerWithWriterInfo(DefaultWriter, userInfo)
 }
 
-
-
-// LoggerWithWriter instance a Logger middleware with the specified writter buffer.
-// Example: os.Stdout, a file opened in write mode, a socket...
+// The same as LoggerWithWriter, but add userInfo string. This userInfo should be set in middleware such as Authorized when validate token
 func LoggerWithWriterInfo(out io.Writer, userInfo string, notlogged ...string) HandlerFunc {
 	isTerm := true
 
